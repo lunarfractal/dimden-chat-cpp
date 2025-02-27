@@ -1,12 +1,11 @@
+#include <websocketpp/server.hpp>
+#include <websocketpp/config/asio_no_tls.hpp>
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <cstring>
 #include <map>
-
-#include <websocketpp/server.hpp>
-
-#include <websocketpp/config/asio_no_tls.hpp>
 
 typedef websocketpp::connection_hdl connection_hdl;
 typedef websocketpp::server<websocketpp::config::asio> server;
@@ -39,7 +38,7 @@ std::map<connection_hdl, Client_Handle> client_handles;
 std::vector<Message> messages;
 
 // some pointers
-uint16_t id_ptr0;
+uint16_t id_ptr0 = 0;
 
 // Callbacks
 void on_open(connection_hdl hdl) {
@@ -91,7 +90,7 @@ void sendUpdate(Message &msg) {
 
     for (Client_Handle client_handle : client_handles) {
         try {
-            server->send(client_handle.hdl, &buffer[0], buffer.size(), websocketpp::frame::opcode::binary);
+            ws_server->send(client_handle.hdl, &buffer[0], buffer.size(), websocketpp::frame::opcode::binary);
         } catch(websocketpp::exception const & e) {
             std::cout << "Send failed" << std::endl;
         }
@@ -104,7 +103,7 @@ void sendInitialUpdate(Client_Handle &client_handle) {
     createInitialMessage(buffer);
 
     try {
-        server->send(client_handle.hdl, &buffer[0], buffer.size(), websocketpp::frame::opcode::binary);
+        ws_server->send(client_handle.hdl, &buffer[0], buffer.size(), websocketpp::frame::opcode::binary);
     } catch(websocketpp::exception const & e) {
         std::cout << "Send failed" << std::endl;
     }
@@ -159,7 +158,7 @@ void createInitialMessage(Buffer &buffer) {
         offset += sizeof(nick_length);
 
         // encode nick
-        std::memcpy(&buffer[offset], client_handle.nick, nick_length);
+        std::memcpy(&buffer[offset], client_handle.nick.c_str(), nick_length);
         offset += nick_length;
 
         // encode message size
@@ -168,14 +167,14 @@ void createInitialMessage(Buffer &buffer) {
         offset += sizeof(message_size);
 
         // encode the message content
-        std::memcpy(&buffer[offset], msg.content, message_size);
+        std::memcpy(&buffer[offset], msg.content.c_str(), message_size);
         offset += message_size;
     }
 }
 
 int main(int argc, char** argv) {
     try {
-        ws.set_access_channels(websocketpp::log::alevel::all);
+        ws_server.set_access_channels(websocketpp::log::alevel::all);
         ws_server.clear_access_channels(websocketpp::log::alevel::frame_payload);
 
         ws_server.init_asio();
